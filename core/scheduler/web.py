@@ -126,7 +126,7 @@ def search_scheduled_job(session, form_data):
                 [client_config_data[idn]['name']
                  for idn in jobs['params'].split(',')
                  ]
-            )
+            ) if jobs['params'] else "-"
 
     _response_dict.update({'data': scheduled_jobs})
 
