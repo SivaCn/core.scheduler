@@ -30,6 +30,7 @@ from core.backend.config import view_client_config
 from core.mq import SimpleSchedulerPublisher
 from core.backend.utils.core_utils import AutoSession
 from core.constants.code_message import filled_code_message
+from core.backend.config import get_valve_details
 # ----------- END: In-App Imports ---------- #
 
 
@@ -123,11 +124,23 @@ def search_scheduled_job(session, form_data):
 
     _response_dict = {'result': True, 'data': None, 'alert_type': None, 'alert_what': None, 'msg': None}
 
+    _params = dict()
     search_data = dict()
-    schedule_type = form_data['searchScheduleType']
+
+    if form_data['searchByField'].lower() == 'schedule':
+        if form_data.get('searchByValue').lower().strip():
+            _params['schedule_type_idn'] = form_data['searchByValue']
+
+    elif form_data['searchByField'].lower() == 'user':
+        if form_data.get('searchByValue').lower().strip():
+            _params['user_idn'] = form_data['searchByValue']
+
+    elif form_data['searchByField'].lower() == 'valve':
+        if form_data.get('searchByValue').lower().strip():
+            _params['params'] = ('like', form_data['searchByValue'], )
 
     scheduled_jobs = JobDetailsModel.scheduled_jobs(
-        session, data_as_dict=True, schedule_type=schedule_type
+        session, data_as_dict=True, **_params
     )
 
     client_config_data = view_client_config()
@@ -344,4 +357,38 @@ def update_sms_config(session, form_data):
     )
 
     _response_dict['data'] = updated_sms_config
+    return _response_dict
+
+def fetch_scheduler_search_type(session, form_data):
+    _response_dict = {'result': True, 'data': dict(), 'alert_type': None, 'alert_what': None, 'msg': None}
+
+    if form_data.lower() == 'user':
+        user_data = UserModel.fetch(session, data_as_dict=True)
+
+        _response_dict['data'] = list()
+
+        for user in user_data:
+            _response_dict['data'].append({
+                'id': user['user_idn'],
+                'value': decode(user['user_name'])
+            })
+
+    if form_data.lower() == 'schedule':
+        schedule_type = CodeScheduleTypeModel.fetch(session, data_as_dict=True)
+
+        _response_dict['data'] = list()
+
+        for type_ in schedule_type:
+            _response_dict['data'].append({
+                'id': type_['schedule_type_idn'],
+                'value': type_['schedule_type']
+            })
+
+    if form_data.lower() == 'valve':
+
+        _response_dict['data'] = [
+            dict(id=each_valve['id'], value=each_valve['name'])
+            for each_valve in get_valve_details()
+        ]
+
     return _response_dict
